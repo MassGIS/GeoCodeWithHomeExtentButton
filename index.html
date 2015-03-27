@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>Blank Visualization</title>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+        <link rel="shortcut icon" href="http://cartodb.com/assets/favicon.ico" />
+        <style>
+            html,
+            body,
+            #basemap {
+                height: 100%;
+                padding: 0;
+                margin: 0;
+                background: white;
+            }
+            
+            #logo {
+                position: absolute;
+                top: 72px;
+                left: 0px;
+                height: 26px;
+                padding: 0;
+                font: bold 11px "Proxima Nova";
+                width: 26px;
+                line-height: 30px;
+                display: block;
+                background-color: rgba(255, 255, 255, 0.9);
+                float: left;
+                box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+                border-radius: 4px;
+                margin-left: 10px;
+                margin-right: 10px;
+                background-image: url("HomeIcon.png");
+                background-repeat: no-repeat;
+            }
+
+        </style>
+
+        <link rel="stylesheet" href="http://libs.cartodb.com/cartodb.js/v3/3.11/themes/css/cartodb.css" />
+        <!--adding jquery autocomplete plugin-->
+        <script src="http://maps.googleapis.com/maps/api/js?sensor=false&amp;libraries=places"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+        <script src="jquery.geocomplete.js"></script>
+        <script>
+            //create Home extent button
+            function Home() {
+                basemap.setZoom(9);
+                basemap.panTo([52.2, -96.8]);
+            }
+
+        </script>
+    </head>
+
+    <body>
+        <div id="basemap"></div>
+        <div title="Go to inital map view">
+            <input type="button" onclick="Home()" id="logo">
+        </div>
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script src="http://libs.cartodb.com/cartodb.js/v3/3.11/cartodb.js"></script>
+        <style>
+            div.cartodb-searchbox {
+                width: 350px;
+            }
+            
+            div.cartodb-searchbox input.text {
+                width: 345px;
+                left: 5px!important;
+            }
+.pac-container:after{
+    content:none !important;
+}
+        </style>
+
+        <script>
+            var basemap;
+
+            function main() {
+                // initialize the map on the "map" div with a given center and zoom value
+                basemap = L.map('basemap', {
+                    zoomControl: false
+                    , center: [42.2, -71.9]
+                    , zoom: 9
+                });
+                //Adding 
+                new L.Control.Zoom({
+                        position: 'topleft'
+                        , zoomInTitle: 'Zoom in'
+                        , zoomOutTitle: 'Zoom out'
+                    })
+                    .addTo(basemap);
+                // add a nice baselayer from Cartodb
+                L.tileLayer('http://{s}.api.cartocdn.com/base-light/{z}/{x}/{y}.png', {
+                        attribution: 'CartoDB'
+                    })
+                    .addTo(basemap);
+                cartodb.createLayer(basemap, 'http://massgis.cartodb.com/api/v2/viz/3baba52e-ccab-11e4-a97d-0e018d66dc29/viz.json')
+                    .addTo(basemap)
+                    .on('done', function (layer) {
+                        // get sublayer 0 and set the infowindow template
+                        var sublayer = layer.getSubLayer(0);
+                        //Adding search bar to the map
+                        var v = cdb.vis.Overlay.create('search', basemap.viz, {})
+                        v.show();
+                        $('#basemap')
+                            .append(v.render()
+                                .el);
+                        //Adding placeholder to search box
+                        $('.cartodb-searchbox')
+                            .find('input.text')
+                            .attr('placeholder', 'Enter Location...');
+                        //calling geocomplete plugin
+                        $('.cartodb-searchbox')
+                            .find('input.text')
+                            .geocomplete({
+                                basemap: '#basemap'
+                            });
+                        //place marker function for saving zooming 
+                        var arr, count = 0
+                            , marker;
+                        var placeMarker = function (event, result) {
+                                count++;
+                                console.log(count);
+                                if (count == 1) {
+                                    //creating empty array
+                                    arr = [];
+                                    //storing latitute for current location
+                                    arr[0] = result.geometry.location.lat();
+                                    //storing langitude for current location
+                                    arr[1] = result.geometry.location.lng();
+                                    //adding lan and lat value to marker object
+                                    marker = L.marker([arr[0], arr[1]]);
+                                    //adding marker object to map
+                                    marker.addTo(basemap);
+                                    //Adding zoom level
+                                    basemap.setZoom(10);
+                                    //Pans the map to a given center. Makes an animated pan if new center is not more than one screen away from the current one.
+                                    basemap.panTo([arr[0], arr[1]]);
+                                } else {
+                                    //removing existing layer from the map
+                                    basemap.removeLayer(marker);
+                                    //creating empty array
+                                    arr = [];
+                                    //storing latitute for current location
+                                    arr[0] = result.geometry.location.lat();
+                                    //storing langitude for current location
+                                    arr[1] = result.geometry.location.lng();
+                                    //adding lan and lat value to marker object
+                                    marker = L.marker([arr[0], arr[1]]);
+                                    //adding marker object to map
+                                    marker.addTo(basemap);
+                                    //Adding zoom level
+                                    basemap.setZoom(10);
+                                    //Pans the map to a given center. Makes an animated pan if new center is not more than one screen away from the current one.
+                                    basemap.panTo([arr[0], arr[1]]);
+                                }
+                            }
+                            //calling place marker function for getting json object 
+                        $('.cartodb-searchbox')
+                            .find('input.text')
+                            .bind("geocode:result", placeMarker);
+                        //detaching the searchbox button from leaflet library
+                        $('.cartodb-searchbox')
+                            .find('input.submit')
+                            .detach();
+                    })
+                    .on('error', function () {
+                        console.log("some error occurred");
+                    });
+            }
+            window.onload = main;
+
+        </script>
+    </body>
+
+</html>
